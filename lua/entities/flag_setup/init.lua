@@ -2,7 +2,8 @@ AddCSLuaFile("cl_init.lua")
 AddCSLuaFile("shared.lua")
 include("shared.lua")
 
-PrintTable( team.GetAllTeams() )
+local WarTimer = 900 -- 15 min?
+local WarCooldown = 1200 -- 20 min?
 
 function ENT:Initialize()
    -- constraint.Keepupright( self, self:GetAngles(), 0, 999999 )
@@ -15,11 +16,8 @@ function ENT:Initialize()
     if IsValid(physobj) then
         physobj:SetMass(150)
     end
-    
-    local WarTimer = 900 -- 15 min?
-    local WarCooldown = 1200 -- 20 min?
 
-    self:SetPercent(0)
+    self:SetPercent(1)
     self:SetStatus(false)
     self:SetTimer(WarTimer)
     self:SetCooldown(0)
@@ -34,7 +32,7 @@ end
 function ENT:EndEvent()
     self:SetCooldown(WarCooldown)
     self:SetStatus(false)
-    self:SetPercent(0)
+    self:SetPercent(1)
     self:SetTimer(WarTimer)
     self.Owner:ChatPrint("Event Over")    
 end
@@ -42,14 +40,17 @@ end
 function ENT:FailedEvent()
     self:SetCooldown(WarCooldown)
     self:SetStatus(false)
-    self:SetPercent(0)
+    self:SetPercent(1)
     self:SetTimer(WarTimer)
-    self.Owner:ChatPrint("Failed Event")
+    PrintMessage(HUD_PRINTTALK, "Failed Event")
 end
 
 function ENT:SuccessfulEvent()
+    self:SetCooldown(WarCooldown)
     self:SetStatus(false)
-    self.Owner:ChatPrint("Successful Event")
+    self:SetPercent(1)
+    self:SetTimer(WarTimer)
+    PrintMessage(HUD_PRINTTALK, "Successful Event")
 end
 
 function ENT:Use( ply )
@@ -63,19 +64,21 @@ end
 
 
 function ENT:Think()
-
     if ( self.ThinkTime <= CurTime() ) then 
+        
         if self:GetStatus() and self:GetTimer() > 0 then 
             self:SetTimer( self:GetTimer() - 1 )
         elseif self:GetStatus() and self:GetTimer() <= 0 then
             self:FailedEvent()
         end
+        if self:GetStatus() and self:GetPercent() <= 0 then     
+            self:FailedEvent()
+        end
         if self:GetStatus() and self:GetPercent() >= 100 then
             self:SuccessfulEvent()
         end
+        self.ThinkTime = CurTime() + 1 
     end
-    
-    self.ThinkTime = CurTime() + 1 
 
     if ( self.PointTimer <= CurTime() ) then
         if self:GetStatus() then
@@ -114,10 +117,11 @@ function ENT:Think()
             PrintMessage(HUD_PRINTTALK, "Enemy Count: " .. GetEnemy)
 
             self.PointTimer = CurTime() + 5
+            end
         end
     end
 end
-end
+
 function ENT:OnRemove()
 
 end
