@@ -2,6 +2,7 @@ AddCSLuaFile("cl_init.lua")
 AddCSLuaFile("shared.lua")
 include("shared.lua")
 
+PrintTable( team.GetAllTeams() )
 
 function ENT:Initialize()
    -- constraint.Keepupright( self, self:GetAngles(), 0, 999999 )
@@ -60,10 +61,11 @@ function ENT:Use( ply )
 
 end
 
+
 function ENT:Think()
 
     if ( self.ThinkTime <= CurTime() ) then 
-        if self:GetStatus() and self:GetTimer() > 0 then
+        if self:GetStatus() and self:GetTimer() > 0 then 
             self:SetTimer( self:GetTimer() - 1 )
         elseif self:GetStatus() and self:GetTimer() <= 0 then
             self:FailedEvent()
@@ -75,47 +77,47 @@ function ENT:Think()
     
     self.ThinkTime = CurTime() + 1 
 
-    if ( self.PointTimer <= CurTime() ) then 
-        --local distanceSquared = self:GetPos():DistToSqr(ent2:GetPos())
+    if ( self.PointTimer <= CurTime() ) then
+        if self:GetStatus() then
+            local distanceSquared = self:GetPos():DistToSqr(self:GetPos())
+            if distanceSquared <= (200 * 200) then
+                local GetFriendly, GetEnemy = 0, 0
+                
+                local radiusSquared = 200 * 200
+                for _, target in pairs(ents.FindByClass("player")) do
+                    if IsValid(target) then
+                        local targetDistanceSquared = self:GetPos():DistToSqr(target:GetPos())
+                        if targetDistanceSquared <= radiusSquared then
+                            if target:Team() == TEAM_UNASSIGNED then
+                                GetFriendly = GetFriendly + 1
+                            elseif target:Team() == TEAM_ENEMY then
+                                GetEnemy = GetEnemy + 1
+                            end
+                        end
+                    end
+                end
+                --for testing
+                for _, target in pairs(ents.FindByClass("npc_*")) do
+                    if IsValid(target) then
+                        local targetDistanceSquared = self:GetPos():DistToSqr(target:GetPos())
+                        if targetDistanceSquared <= radiusSquared then
+                            GetEnemy = GetEnemy + 1
+                        end
+                    end
+                end
+            
+            local AddPoint = GetEnemy - GetFriendly
+            self:SetPercent(self:GetPercent() + AddPoint)
+            PrintMessage(HUD_PRINTTALK, "---------------------")
+            PrintMessage(HUD_PRINTTALK, "Percentage: " .. self:GetPercent())
+            PrintMessage(HUD_PRINTTALK, "Friendly Count: " .. GetFriendly)
+            PrintMessage(HUD_PRINTTALK, "Enemy Count: " .. GetEnemy)
 
-        -- check how many of x team is in sqr to dist
-        -- cap at 5 players each team
-        -- local GetFriendly, GetEnemy = 0,0
-        -- if GetFriendly >= 5 then GetFriendly = 5 end
-        -- local AddPoint = GetEnemy - GetFriendly // This is adding x from enemy and taking x from friendly eg, 4 - 3 or 2-5 = -3 etc
-        -- self:SetPercent( self:GetPercent() + AddPoint )
-         -- check if getpercent <= 0 // if under you would need to call self:FailedEvent()   
-        --if distanceSquared <= (200 * 200) then
-            -- Code to execute when the squared distance is within a certain range
-
-        --end
-
-
-/*
-
-    local GetFriendly, GetEnemy = 0, 0
-    
-    for _, target in pairs(ents.FindInSphere(self:GetPos(), 200)) do
-        if IsValid(target) and (target:IsPlayer() or target:IsNPC()) then
-            if target:IsPlayer() and target:Team() == TEAM_CITIZEN then
-                GetFriendly = GetFriendly + 1
-            elseif target:IsPlayer() and target:Team() == TEAM_ENEMY then
-                GetEnemy = GetEnemy + 1
-            elseif target:IsNPC() then
-                GetEnemy = GetEnemy + 1
-            end
+            self.PointTimer = CurTime() + 5
         end
     end
-    
-    -- Now you have the counts of friendly and enemy players/NPCs within the distance
-    print("Friendly Count:", GetFriendly)
-    print("Enemy Count:", GetEnemy)
-*/
-
-        self.PointTimer = CurTime() + 5
-    end
 end
-
+end
 function ENT:OnRemove()
 
 end
