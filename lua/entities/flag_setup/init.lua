@@ -7,17 +7,18 @@ local WarCooldown = 1200 -- 20 min?
 
 function ENT:Initialize()
    -- constraint.Keepupright( self, self:GetAngles(), 0, 999999 )
-	self:SetModel("models/hunter/blocks/cube025x025x025.mdl")
+	self:SetModel("models/props_c17/signpole001.mdl")
 	self:PhysicsInit(SOLID_VPHYSICS)
 	self:SetMoveType(MOVETYPE_VPHYSICS)
 	self:SetSolid(SOLID_VPHYSICS)
+    self:SetPersistent(true)
    
     physobj = self:GetPhysicsObject()
     if IsValid(physobj) then
         physobj:SetMass(150)
     end
 
-    self:SetPercent(1)
+    self:SetPercent(10)
     self:SetStatus(false)
     self:SetTimer(WarTimer)
     self:SetCooldown(0)
@@ -32,7 +33,7 @@ end
 function ENT:EndEvent()
     self:SetCooldown(WarCooldown)
     self:SetStatus(false)
-    self:SetPercent(1)
+    self:SetPercent(10)
     self:SetTimer(WarTimer)
     self.Owner:ChatPrint("Event Over")    
 end
@@ -40,15 +41,16 @@ end
 function ENT:FailedEvent()
     self:SetCooldown(WarCooldown)
     self:SetStatus(false)
-    self:SetPercent(1)
+    self:SetPercent(10)
     self:SetTimer(WarTimer)
     PrintMessage(HUD_PRINTTALK, "Failed Event")
 end
 
 function ENT:SuccessfulEvent()
+    --ambient/alarms/warningbell1.wav
     self:SetCooldown(WarCooldown)
     self:SetStatus(false)
-    self:SetPercent(1)
+    self:SetPercent(10)
     self:SetTimer(WarTimer)
     PrintMessage(HUD_PRINTTALK, "Successful Event")
 end
@@ -108,7 +110,12 @@ function ENT:Think()
                         end
                     end
                 end
-            
+            if GetEnemy > 5 then
+                GetEnemy = 5
+            end
+            if GetFriendly > 5 then
+                GetFriendly = 5
+            end
             local AddPoint = GetEnemy - GetFriendly
             self:SetPercent(self:GetPercent() + AddPoint)
             PrintMessage(HUD_PRINTTALK, "---------------------")
