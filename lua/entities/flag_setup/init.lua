@@ -23,7 +23,8 @@ function ENT:Initialize()
     self:SetTimer(WarTimer)
     self:SetCooldown(0)
     self.ThinkTime = 1
-    self.PointTimer = 5
+    self.PointTimer = 1
+    self.TimeEvent = CurTime() - WarCooldown
 end
 
 function ENT:StartEvent()
@@ -35,6 +36,7 @@ function ENT:EndEvent()
     self:SetStatus(false)
     self:SetPercent(10)
     self:SetTimer(WarTimer)
+    self.TimeEvent = CurTime()
     self.Owner:ChatPrint("Event Over")    
 end
 
@@ -43,6 +45,7 @@ function ENT:FailedEvent()
     self:SetStatus(false)
     self:SetPercent(10)
     self:SetTimer(WarTimer)
+    self.TimeEvent = CurTime()
     PrintMessage(HUD_PRINTTALK, "Failed Event")
 end
 
@@ -51,17 +54,16 @@ function ENT:SuccessfulEvent()
     self:SetCooldown(WarCooldown)
     self:SetStatus(false)
     self:SetPercent(10)
+    self.TimeEvent = CurTime()
     self:SetTimer(WarTimer)
     PrintMessage(HUD_PRINTTALK, "Successful Event")
 end
 
-function ENT:Use( ply )
---ply:Team() == TEAM_CITIZEN
-    if ( !self:GetStatus() ) then
+function ENT:Use(ply)
+    if !self:GetStatus() and CurTime() >= self.TimeEvent + self:GetCooldown() then
         self:StartEvent()
         ply:ChatPrint("Started flag event")
     end
-
 end
 
 
@@ -123,7 +125,7 @@ function ENT:Think()
             PrintMessage(HUD_PRINTTALK, "Friendly Count: " .. GetFriendly)
             PrintMessage(HUD_PRINTTALK, "Enemy Count: " .. GetEnemy)
 
-            self.PointTimer = CurTime() + 5
+            self.PointTimer = CurTime() + 1
             end
         end
     end
