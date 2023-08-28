@@ -72,7 +72,7 @@ function ENT:FailedEvent()
         messages = {
             { role = "user", content = "You are a messenger of a kingdom. The kingdom you are a part of just won a war against another faction. You are the messenger that delivers the message to the people that the war was won and that the enemy was defeated. You are excited and yell the message out. You should also speak of the great actions of our warriors and praise the king. The message should not be longer than 50 words and no shorter than 40 words." }
         },
-        temperature = 0.7
+        temperature = 1
     }
 
     local postData = util.TableToJSON(jsonData)
