@@ -5,6 +5,13 @@ include("shared.lua")
 local WarTimer = 900 -- 15 min?
 local WarCooldown = 1200 -- 20 min?
 
+local teamsToCheck = {
+    TEAM_TEAM1,
+    TEAM_TEAM2,
+    TEAM_TEAM3,
+    -- Add more teams as needed
+}
+
 function ENT:Initialize()
    -- constraint.Keepupright( self, self:GetAngles(), 0, 999999 )
 	self:SetModel("models/props_c17/signpole001.mdl")
@@ -23,11 +30,13 @@ function ENT:Initialize()
     self:SetTimer(WarTimer)
     self:SetCooldown(0)
     self.ThinkTime = 1
-    self.PointTimer = 1
+    self.PointTimer = 0.5
+    self.AbandonedTicks = 0
     self.TimeEvent = CurTime() - WarCooldown
 end
 
 function ENT:StartEvent()
+    self.AbandonedTicks = 0
     self:SetStatus(true)
 end
 
@@ -36,6 +45,7 @@ function ENT:EndEvent()
     self:SetStatus(false)
     self:SetPercent(10)
     self:SetTimer(WarTimer)
+    self.AbandonedTicks = 0
     self.TimeEvent = CurTime()
     self.Owner:ChatPrint("Event Over")    
 end
@@ -45,9 +55,51 @@ function ENT:FailedEvent()
     self:SetStatus(false)
     self:SetPercent(10)
     self:SetTimer(WarTimer)
+    self.AbandonedTicks = 0
     self.TimeEvent = CurTime()
     PrintMessage(HUD_PRINTTALK, "Failed Event")
+
+    local apiKey = "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"  -- Replace with your actual API key
+    local apiUrl = "https://api.openai.com/v1/chat/completions"
+
+    local headers = {
+        Authorization = "Bearer " .. apiKey,
+        ContentType = "application/json"
+    }
+
+    local jsonData = {
+        model = "gpt-3.5-turbo",  -- Include the "model" parameter here
+        messages = {
+            { role = "user", content = "You are a messenger of a kingdom. The kingdom you are a part of just won a war against another faction. You are the messenger that delivers the message to the people that the war was won and that the enemy was defeated. You are excited and yell the message out. You should also speak of the great actions of our warriors and praise the king. The message should not be longer than 50 words and no shorter than 40 words." }
+        },
+        temperature = 0.7
+    }
+
+    local postData = util.TableToJSON(jsonData)
+    print(postData)
+    HTTP({
+        method = "POST",
+        url = apiUrl,
+        headers = headers,
+        body = postData,
+        type = "application/json",
+        timeout = 60,
+        success = function(code, body, headers)
+            print("API Response Code: " .. code)
+            print("API Response Body: " .. body)
+
+            local jsonResponse = util.JSONToTable(body)
+            if jsonResponse and jsonResponse.choices then
+                local assistantResponse = jsonResponse.choices[1].message.content
+                PrintMessage(HUD_PRINTTALK, assistantResponse)
+            end
+        end,
+        failed = function(error)
+            print("API Request Failed: " .. error)
+        end
+    })
 end
+
 
 function ENT:SuccessfulEvent()
     --ambient/alarms/warningbell1.wav
@@ -55,6 +107,7 @@ function ENT:SuccessfulEvent()
     self:SetStatus(false)
     self:SetPercent(10)
     self.TimeEvent = CurTime()
+    self.AbandonedTicks = 0
     self:SetTimer(WarTimer)
     PrintMessage(HUD_PRINTTALK, "Successful Event")
 end
@@ -65,7 +118,6 @@ function ENT:Use(ply)
         ply:ChatPrint("Started flag event")
     end
 end
-
 
 function ENT:Think()
     if ( self.ThinkTime <= CurTime() ) then 
@@ -81,6 +133,9 @@ function ENT:Think()
         if self:GetStatus() and self:GetPercent() >= 100 then
             self:SuccessfulEvent()
         end
+        --if self.AbandonedTicks >= 30 then
+            --self:FailedEvent()
+        --end
         self.ThinkTime = CurTime() + 1 
     end
 
@@ -104,6 +159,7 @@ function ENT:Think()
                     end
                 end
                 --for testing
+                
                 for _, target in pairs(ents.FindByClass("npc_*")) do
                     if IsValid(target) then
                         local targetDistanceSquared = self:GetPos():DistToSqr(target:GetPos())
@@ -112,20 +168,25 @@ function ENT:Think()
                         end
                     end
                 end
-            if GetEnemy > 5 then
-                GetEnemy = 5
-            end
-            if GetFriendly > 5 then
-                GetFriendly = 5
-            end
-            local AddPoint = GetEnemy - GetFriendly
-            self:SetPercent(self:GetPercent() + AddPoint)
-            PrintMessage(HUD_PRINTTALK, "---------------------")
-            PrintMessage(HUD_PRINTTALK, "Percentage: " .. self:GetPercent())
-            PrintMessage(HUD_PRINTTALK, "Friendly Count: " .. GetFriendly)
-            PrintMessage(HUD_PRINTTALK, "Enemy Count: " .. GetEnemy)
+                if GetEnemy > 5 then
+                    GetEnemy = 5
+                end
+                if GetFriendly > 5 then
+                    GetFriendly = 5
+                end
+                --if GetEnemy == 0 then
+                    --self.AbandonedTicks = self.AbandonedTicks + 1
+                --else
+                    --self.AbandonedTicks = 0
+                --end
+                local AddPoint = GetEnemy - GetFriendly
+                self:SetPercent(self:GetPercent() + AddPoint)
+                PrintMessage(HUD_PRINTTALK, "---------------------")
+                PrintMessage(HUD_PRINTTALK, "Percentage: " .. self:GetPercent())
+                PrintMessage(HUD_PRINTTALK, "Friendly Count: " .. GetFriendly)
+                PrintMessage(HUD_PRINTTALK, "Enemy Count: " .. GetEnemy)
 
-            self.PointTimer = CurTime() + 1
+                self.PointTimer = CurTime() + 0.5
             end
         end
     end
