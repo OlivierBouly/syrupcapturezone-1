@@ -2,6 +2,13 @@ AddCSLuaFile("cl_init.lua")
 AddCSLuaFile("shared.lua")
 include("shared.lua")
 
+local prompts = {
+    "You are a messenger of a kingdom. The kingdom you are a part of just won a war against another faction. You are the messenger that delivers the message to the people that the war was won and that the enemy was defeated. You are excited and yell the message out. You should also speak of the great actions of our warriors and praise the king. The message should not be longer than 50 words and no shorter than 40 words. Along with that, the text should not take up more than 254 bytes of data.",
+    "You are a messenger of a kingdom The kingdom you are a part of just lost a war against another faction. You are delivering the message of your kingdom's defeat to the people in a sad tone. You need to talk about the defeat of our king and his army of warriors. The message should not be longer than 50 words and no shorter than 40. Along with that, the text should not take up more than 254 bytes of data.",
+    "",
+    "",
+}
+
 local WarTimer = 900 -- 15 min?
 local WarCooldown = 1200 -- 20 min?
 
@@ -11,6 +18,48 @@ local teamsToCheck = {
     TEAM_TEAM3,
     -- Add more teams as needed
 }
+
+function chatGPTRequest(content, temperature)
+    local apiKey = "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"  -- Replace with your actual API key
+    local apiUrl = "https://api.openai.com/v1/chat/completions"
+
+    local headers = {
+        Authorization = "Bearer " .. apiKey,
+        ContentType = "application/json"
+    }
+
+    local jsonData = {
+        model = "gpt-3.5-turbo",  -- Include the "model" parameter here
+        messages = {
+            { role = "user", content = content }
+        },
+        temperature = temperature
+    }
+
+    local postData = util.TableToJSON(jsonData)
+    print(postData)
+    HTTP({
+        method = "POST",
+        url = apiUrl,
+        headers = headers,
+        body = postData,
+        type = "application/json",
+        timeout = 60,
+        success = function(code, body, headers)
+            print("API Response Code: " .. code)
+            print("API Response Body: " .. body)
+
+            local jsonResponse = util.JSONToTable(body)
+            if jsonResponse and jsonResponse.choices then
+                local assistantResponse = jsonResponse.choices[1].message.content
+                PrintMessage(HUD_PRINTTALK, assistantResponse)
+            end
+        end,
+        failed = function(error)
+            print("API Request Failed: " .. error)
+        end
+    })
+end    
 
 function ENT:Initialize()
    -- constraint.Keepupright( self, self:GetAngles(), 0, 999999 )
@@ -58,46 +107,7 @@ function ENT:FailedEvent()
     self.AbandonedTicks = 0
     self.TimeEvent = CurTime()
     PrintMessage(HUD_PRINTTALK, "Failed Event")
-
-    local apiKey = "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"  -- Replace with your actual API key
-    local apiUrl = "https://api.openai.com/v1/chat/completions"
-
-    local headers = {
-        Authorization = "Bearer " .. apiKey,
-        ContentType = "application/json"
-    }
-
-    local jsonData = {
-        model = "gpt-3.5-turbo",  -- Include the "model" parameter here
-        messages = {
-            { role = "user", content = "You are a messenger of a kingdom. The kingdom you are a part of just won a war against another faction. You are the messenger that delivers the message to the people that the war was won and that the enemy was defeated. You are excited and yell the message out. You should also speak of the great actions of our warriors and praise the king. The message should not be longer than 50 words and no shorter than 40 words." }
-        },
-        temperature = 1
-    }
-
-    local postData = util.TableToJSON(jsonData)
-    print(postData)
-    HTTP({
-        method = "POST",
-        url = apiUrl,
-        headers = headers,
-        body = postData,
-        type = "application/json",
-        timeout = 60,
-        success = function(code, body, headers)
-            print("API Response Code: " .. code)
-            print("API Response Body: " .. body)
-
-            local jsonResponse = util.JSONToTable(body)
-            if jsonResponse and jsonResponse.choices then
-                local assistantResponse = jsonResponse.choices[1].message.content
-                PrintMessage(HUD_PRINTTALK, assistantResponse)
-            end
-        end,
-        failed = function(error)
-            print("API Request Failed: " .. error)
-        end
-    })
+    chatGPTRequest(prompts[1], 1)
 end
 
 
@@ -110,6 +120,7 @@ function ENT:SuccessfulEvent()
     self.AbandonedTicks = 0
     self:SetTimer(WarTimer)
     PrintMessage(HUD_PRINTTALK, "Successful Event")
+    chatGPTRequest(prompts[2], 1)
 end
 
 function ENT:Use(ply)
